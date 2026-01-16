@@ -1,5 +1,5 @@
 """
-Main entry point for parallel face recognition
+Main entry point for parallel face recognition with caching
 """
 import time
 import os
@@ -8,8 +8,9 @@ from parallel_face_search import ParallelFaceRecognize
 import multiprocessing as mp
 import face_recognition # type: ignore
 from tqdm import tqdm
+from utils import FaceCache
 
-def save_found_images(matches, folder_path, known_encoding, output_dir="found_by_parallel"):
+def save_found_images(matches, folder_path, known_encoding, output_dir="found_by_parallel", use_cache=True):
     """
     Save found image with rectangle (bounding box) around detected face
     Rectangle will apply only to the target face
@@ -19,20 +20,49 @@ def save_found_images(matches, folder_path, known_encoding, output_dir="found_by
         folder_path: source folder path
         known_encoding: encoded known face
         output_dir: directory to save results
+        use_cache: whether to use caching (default True)
+    
+    Explanation:
+        Cache stores face locations and encodings to avoid recomputation
+        Speeds up repeated runs significantly
     """
     # create output directory if doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print(f"Created directory: {output_dir}")
     
+    # initialize cache
+    cache = FaceCache() if use_cache else None
+    
+    cache_hits = 0
+    cache_misses = 0
+    
+    print(f"Processing {len(matches)} matched images...")
     for filename in matches:
         try:
             image_path = os.path.join(folder_path, filename)
-            image = face_recognition.load_image_file(image_path)
             
-            # find all face locations and their encodings
-            face_locations = face_recognition.face_locations(image)
-            face_encodings = face_recognition.face_encodings(image, face_locations)
+            # try to get from cache first
+            cached_data = cache.get(image_path) if cache else None
+            
+            if cached_data:
+                # cache hit - use cached data
+                face_locations = cached_data['locations']
+                face_encodings = cached_data['encodings']
+                cache_hits += 1
+                
+                # still need to load image for drawing
+                image = face_recognition.load_image_file(image_path)
+            else:
+                # cache miss - compute and cache
+                image = face_recognition.load_image_file(image_path)
+                face_locations = face_recognition.face_locations(image)
+                face_encodings = face_recognition.face_encodings(image, face_locations)
+                
+                # store in cache for next time
+                if cache:
+                    cache.set(image_path, face_locations, face_encodings)
+                cache_misses += 1
             
             # convert RGB (face_recognition) to BGR (OpenCV)
             output_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -54,22 +84,31 @@ def save_found_images(matches, folder_path, known_encoding, output_dir="found_by
             
         except Exception as e:
             print(f"  Error saving {filename}: {e}")
+    
+    # print cache statistics
+    if use_cache:
+        total = cache_hits + cache_misses
+        hit_rate = (cache_hits / total * 100) if total > 0 else 0
+        print(f"\nCache Statistics:")
+        print(f"Cache hits: {cache_hits}/{total} ({hit_rate:.1f}%)")
+        print(f"Cache misses: {cache_misses}/{total}")
+        if cache_hits > 0:
+            print(f"Caching saved a lot of computation time!")
 
 
 def main():
     """
     Main execution function
     """
-    print("--------------------------------------")
-    print("       Parallel face recognition")
-    print("--------------------------------------")
+    print("-------------------------------------------")
+    print("Parallel face recognition")
+    print("-------------------------------------------\n")
     
     # image paths
-    known_image = "dataset/known_woman.jpg"
+    known_image = "dataset/max.jpg"
     image_folder = "dataset/imageset/"
     
     # initialize parallel recognizer
-    print("Initializing parallel face recognizer...\n")
     recognizer = ParallelFaceRecognize(known_image)
     recognizer.load_known_face()
     
@@ -101,21 +140,26 @@ def main():
         for i, filename in enumerate(matches, 1):
             print(f"{i}. {filename}")
         
-        # save found images with rectangles
+        # save found images with rectangles with caching
         print(f"\nSaving results to 'found_by_parallel/' directory...")
-        save_found_images(matches, image_folder, recognizer.known_encoding)
+        save_start = time.time()
+        save_found_images(matches, image_folder, recognizer.known_encoding, use_cache=True)
+        save_time = time.time() - save_start
+        
+        print(f"\nImages saved in {save_time:.2f} seconds")
         
     else:
         print("\nNo matches found")
     
     # performance metrics
     print("\nPerformance metrics:")
-    print(f"Total processing time: {parallel_time:.2f} seconds")
+    print(f"Search time: {parallel_time:.2f} seconds")
     print(f"Workers used: {recognizer.num_workers}")
     print(f"Images per worker: ~{len(filenames) // recognizer.num_workers}")
     print(f"Average time per image: {parallel_time / len(filenames):.3f} seconds")
     
-    print("\nRun 'python benchmark.py' to compare with serial performance")
+    print("\nTip: Run again to see cache speedup!")
+    print("Run 'python benchmark.py' to compare with serial performance")
 
 if __name__ == "__main__":
     main()

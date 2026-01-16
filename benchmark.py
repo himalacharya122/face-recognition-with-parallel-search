@@ -34,27 +34,29 @@ def run_serial(known_image_path, folder_path, find_all=True):
     return matches, time_taken
 
 
-def run_parallel(known_image_path, folder_path, num_workers, find_all=True):
+def run_parallel(known_image_path, folder_path, num_workers, find_all=True, verbose=True):
     """
     Run parallel face recognition
 
     Returns:
-        matches, time_taken
+        matches, time_taken, actual_workers
     """
-    print(f"\nRunning parallel implementation...")
+    if verbose:
+        print(f"\nRunning parallel implementation...")
 
     start_time = time.time()
 
-    recognizer = ParallelFaceRecognize(known_image_path, num_workers=num_workers)
+    recognizer = ParallelFaceRecognize(known_image_path, num_workers=num_workers, verbose=verbose)
     recognizer.load_known_face()
 
     matches = recognizer.search_parallel(folder_path, find_all=find_all)
 
     time_taken = time.time() - start_time
 
-    print(f"\nParallel Results:")
-    print(f"Time taken: {time_taken:.2f}s")
-    print(f"Matches found: {len(matches)}")
+    if verbose:
+        print(f"\nParallel Results:")
+        print(f"Time taken: {time_taken:.2f}s")
+        print(f"Matches found: {len(matches)}")
 
     return matches, time_taken, recognizer.num_workers
 
@@ -65,7 +67,7 @@ def compare_performance(find_all=True):
     print("        Performance comparison: Serial vs Parallel")
     print("-----------------------------------------------------------\n")
 
-    known_image = "dataset/known_woman.jpg"
+    known_image = "dataset/max.jpg"
     image_folder = "dataset/imageset/"
 
     # Serial
@@ -76,7 +78,8 @@ def compare_performance(find_all=True):
         known_image,
         image_folder,
         num_workers=None,
-        find_all=find_all
+        find_all=find_all,
+        verbose=True
     )
 
     print("\nAnalysis:")
@@ -117,7 +120,7 @@ def test_scalability(workers_list=None):
 
     print("\nScalability test: Performance vs Worker Count\n")
 
-    known_image = "dataset/known_woman.jpg"
+    known_image = "dataset/max.jpg"
     image_folder = "dataset/imageset/"
 
     results = []
@@ -125,7 +128,7 @@ def test_scalability(workers_list=None):
     for num_workers in workers_list:
         print(f"Testing with {num_workers} worker(s)...")
 
-        recognizer = ParallelFaceRecognize(known_image, num_workers=num_workers)
+        recognizer = ParallelFaceRecognize(known_image, num_workers=num_workers, verbose=False)
         recognizer.load_known_face()
 
         start = time.time()
@@ -157,30 +160,20 @@ def test_find_all_vs_first():
     """Compare find-all vs find-first performance"""
     print("\nComparison: Find All vs Find First Match\n")
 
-    known_image = "dataset/known_woman.jpg"
+    known_image = "dataset/max.jpg"
     image_folder = "dataset/imageset/"
 
     # Find all
     print("Finding ALL matches")
-    recognizer_all = ParallelFaceRecognize(known_image)
-    recognizer_all.load_known_face()
-
-    start = time.time()
-    matches_all = recognizer_all.search_parallel(image_folder, find_all=True)
-    time_all = time.time() - start
-
+    matches_all, time_all, _ = run_parallel(known_image, image_folder, num_workers=4, 
+                                             find_all=True, verbose=False)
     print(f"Found {len(matches_all)} matches in {time_all:.2f}s\n")
 
     # Find first
     print("Finding first match only")
-    recognizer_first = ParallelFaceRecognize(known_image)
-    recognizer_first.load_known_face()
-
-    start = time.time()
-    matches_first = recognizer_first.search_parallel(image_folder, find_all=False)
-    time_first = time.time() - start
-
-    print(f"Found {len(matches_first)} match(es) in {time_first:.2f}s\n")
+    matches_first, time_first, _ = run_parallel(known_image, image_folder, num_workers=4, 
+                                                  find_all=False, verbose=False)
+    print(f"Found {len(matches_first)} match in {time_first:.2f}s\n")
 
     # Analysis
     print("Analysis:")

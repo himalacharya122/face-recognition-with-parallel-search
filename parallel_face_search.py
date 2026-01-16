@@ -22,13 +22,14 @@ class ParallelFaceRecognize:
     Each worker processes a different subset of images independently
     """
     
-    def __init__(self, known_image_path, num_workers=None):
+    def __init__(self, known_image_path, num_workers=None, verbose=True):
         """
         Initialize recognizer
         
         Args:
             known_image_path: path to known face image
             num_workers: number of worker processes (None = auto-detect)
+            verbose: to print loading messages or not
         """
         if not validate_image_path(known_image_path):
             raise ValueError(f"Invalid known image path: {known_image_path}")
@@ -36,6 +37,7 @@ class ParallelFaceRecognize:
         self.known_image_path = known_image_path
         self.known_encoding = None
         self.num_workers = num_workers
+        self.verbose = verbose
     
     def load_known_face(self):
         """
@@ -44,9 +46,11 @@ class ParallelFaceRecognize:
         Time: O(1) - done once
 
         Explanation:
-            Done only once in the main process, then shared (read-only) with all workers to avoid memory duplication
+            Done only once in the main process, then shared (read-only) with all workers
         """
-        print(f"Loading known face from: {self.known_image_path}")
+        if self.verbose:
+            print(f"Loading known face from: {self.known_image_path}")
+        
         known_image = face_recognition.load_image_file(self.known_image_path)
         encodings = face_recognition.face_encodings(known_image)
 
@@ -54,7 +58,9 @@ class ParallelFaceRecognize:
             raise ValueError("No face found in known image!")
         
         self.known_encoding = encodings[0]
-        print("Known face loaded successfully")
+        
+        if self.verbose:
+            print("Known face loaded successfully")
         
     
     def get_image_files(self, folder_path):
@@ -112,8 +118,9 @@ class ParallelFaceRecognize:
         # create chunks for workers
         chunks = chunk_list(filenames, self.num_workers)
 
-        print(f"\nProcessing {len(filenames)} images with {self.num_workers} workers")
-        print(f"Chunk sizes: {[len(chunk) for chunk in chunks]}")
+        if self.verbose:
+            print(f"\nProcessing {len(filenames)} images with {self.num_workers} workers")
+            print(f"Chunk sizes: {[len(chunk) for chunk in chunks]}")
 
         # create process pool and process chunks in parallel
         with mp.Pool(processes=self.num_workers) as pool:
@@ -127,7 +134,7 @@ class ParallelFaceRecognize:
             # map chunks to workers (parallel execution)
             # use imap to track progress by chunks
             results = []
-            with tqdm(total=len(chunks), desc="Processing Chunks") as pbar:
+            with tqdm(total=len(chunks), desc="Processing Chunks", disable=not self.verbose) as pbar:
                 for result in pool.imap(process_func, chunks):
                     results.append(result)
                     pbar.update(1)
@@ -206,37 +213,6 @@ class ParallelFaceRecognize:
             return None
             
         except Exception as e:
-            print(f"Error processing {filename}: {e}")
+            if self.verbose:
+                print(f"Error processing {filename}: {e}")
             return None
-
-
-def process_image_worker(filename, known_encoding, folder_path):
-    """
-    Worker function for processing single image
-    Must be at module level for multiprocessing.Pool
-    
-    Args:
-        filename: image filename
-        known_encoding: encoded known face
-        folder_path: directory path
-    
-    Returns:
-        filename if match found, None otherwise
-    """
-    try:
-        image_path = os.path.join(folder_path, filename)
-        unknown_image = face_recognition.load_image_file(image_path)
-        unknown_encodings = face_recognition.face_encodings(unknown_image)
-        
-        if not unknown_encodings:
-            return None
-        
-        for unknown_encoding in unknown_encodings:
-            matches = face_recognition.compare_faces([known_encoding], unknown_encoding)
-            if matches[0]:
-                return filename
-        
-        return None
-    except Exception as e:
-        print(f"Error processing {filename}: {e}")
-        return None
