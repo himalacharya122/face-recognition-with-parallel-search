@@ -1,6 +1,7 @@
 site_name: Face Recognition API by Himal
 site_description: Parallel and Serial Face Recognition Documentation
 site_author: Himal Acharya
+site_url: https://himalacharya122.github.io/face-recognition-with-parallel-search/
 
 theme:
   name: material
