@@ -1,0 +1,39 @@
+/* Use Cambria for main text */
+:root {
+  --md-text-font: "Cambria", "Georgia", "Times New Roman", serif;
+  --md-code-font: "JetBrains Mono", Consolas, monospace;
+}
+
+/* Body text */
+.md-typeset {
+  font-family: "Cambria", "Georgia", "Times New Roman", serif;
+  font-size: 16px;
+}
+
+/* Headers bold + elegant */
+.md-typeset h1 {
+  font-family: "Cambria", "Georgia", serif;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.md-typeset h2 {
+  font-family: "Cambria", "Georgia", serif;
+  font-weight: 750;
+}
+
+.md-typeset h3 {
+  font-family: "Cambria", "Georgia", serif;
+  font-weight: 700;
+}
+
+/* Sidebar */
+.md-nav__title,
+.md-nav__link {
+  font-family: "Cambria", "Georgia", serif;
+}
+
+/* Header bar shadow polish */
+.md-header {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+}

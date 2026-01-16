@@ -1,33 +1,72 @@
-site_name: Face Recognition API
-# site_url: username.github.io
+site_name: Face Recognition API by Himal
+site_description: Parallel and Serial Face Recognition Documentation
+site_author: Himal Acharya
+
 theme:
   name: material
+  language: en
+
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
   palette:
-    # Light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: indigo
-      accent: indigo
+    - scheme: default
+      primary: deep purple
+      accent: pink
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-    # Dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: black
-      accent: indigo
+
+    - scheme: slate
+      primary: deep purple
+      accent: pink
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-markdown_extensions:
-  - admonition
-  - pymdownx.superfences  # For diagrams/tabs
-  - pymdownx.tabbed:      # For content tabs
-      alternate_style: true
+
 plugins:
+  - search
   - mkdocstrings:
       handlers:
         python:
           options:
-            show_source: true         # Shows code alongside docs
-            show_root_heading: true   # Shows the module name
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            separate_signature: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.details
+  - attr_list
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - API Reference:
+      - Benchmark: benchmark.md
+      - Utils: utils.md
+      - Parallel Search: parallel_face_search.md
+      - Serial Search: serial_face_search.md
+      - Main: main.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/himalacharya122/face-recognition-with-parallel-search
+
+extra_css:
+  - styles/extra.css
